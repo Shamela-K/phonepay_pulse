@@ -34,6 +34,26 @@ from analysis import (
     get_districts_list,
     get_district_transaction_df
 )
+from sqlalchemy import create_engine
+import pandas as pd
+
+engine = create_engine("mysql+mysqlconnector://root:12345678@localhost/phonepay_pulse")
+
+query = """
+SELECT state,
+SUM(transaction_count) AS total_transactions,
+SUM(transaction_amount) AS total_amount
+FROM aggregated_transaction
+GROUP BY state
+"""
+
+df = pd.read_sql(query, engine)
+
+
+# load data into dataframe
+
+df["state"] = df["state"].str.replace("-", " ").str.title()
+
 
 # -----------------------
 # SIDEBAR NAVIGATION
@@ -50,48 +70,26 @@ if page == "Home":
     st.title("PhonePe Pulse")
     st.write("Welcome to the PhonePe Pulse Dashboard")
     
- 
-    st.markdown("<h1 style='text-align:center; color:brown;'>India Transactions Dashboard</h1>", unsafe_allow_html=True)
+    
+    query = "SELECT * FROM aggregated_transaction"
 
-
-    df = pd.read_csv(
-    "https://gist.githubusercontent.com/jbrobst/56c13bbbf9d97d187fea01ca62ea5112/raw/"
-    "e388c4cae20aa53cb5090210a42ebb9b765c0a36/active_cases_2020-07-17_0800.csv")
-
-
-    india_geojson = "https://gist.githubusercontent.com/jbrobst/56c13bbbf9d97d187fea01ca62ea5112/raw/" \
-                "e388c4cae20aa53cb5090210a42ebb9b765c0a36/india_states.geojson"
-
-# --- Rename columns to match transactions (so later real CSV works directly) ---
-    df.rename(columns={
-    'state': 'State',
-    'active cases': 'Transaction_Count'
-    }, inplace=True)
-
-# --- Add a placeholder Transaction_Amount column ---
-    df['Transaction_Amount'] = df['Transaction_Count'] * 500  # Example multiplier for demo
-
-# --- Plotly choropleth with hover info ---
+# Load data into DataFrame
+    
+    
+    
     fig = px.choropleth(
     df,
-    geojson=india_geojson,
+    geojson="https://gist.githubusercontent.com/jbrobst/56c13bbbf9d97d187fea01ca62ea5112/raw/e388c4cae20aa53cb5090210a42ebb9b765c0a36/india_states.geojson",
     featureidkey='properties.ST_NM',
-    locations='State',
-    color='Transaction_Count',
-    hover_data={
-        'State': True,
-        'Transaction_Count': True,
-        'Transaction_Amount': True
-    },
-    color_continuous_scale='Blues',
-    title="India Transaction Overview"
+    locations='state',
+    color='total_amount',
+    color_continuous_scale='Reds'
 )
 
     fig.update_geos(fitbounds="locations", visible=False)
-    fig.update_layout(margin={"r":0,"t":50,"l":0,"b":0})
 
-# --- Show map in Streamlit ---
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
+  
 # -----------------------
 # ANALYSIS PAGE
 # -----------------------
